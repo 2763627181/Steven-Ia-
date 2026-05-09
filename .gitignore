@@ -1,0 +1,17 @@
+# Dependencies
+frontend/node_modules/
+
+# Build output
+frontend/.next/
+frontend/out/
+
+# Environment files
+frontend/.env.local
+frontend/.env*.local
+
+# Debug
+npm-debug.log*
+
+# Misc
+.DS_Store
+*.pem
