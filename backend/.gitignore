@@ -1,0 +1,9 @@
+# Credenciales locales — nunca subir al repo
+src/StevenIA.API/appsettings.Development.json
+src/StevenIA.API/appsettings.Production.json
+
+# Binarios y temporales
+**/bin/
+**/obj/
+*.user
+.vs/
