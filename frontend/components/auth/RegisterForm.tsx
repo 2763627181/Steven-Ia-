@@ -4,15 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
-  Eye,
-  EyeOff,
-  Mail,
-  Lock,
-  User,
-  Building2,
-  ArrowRight,
-  CheckCircle,
+  Eye, EyeOff, Mail, Lock, User, Building2, ArrowRight, CheckCircle, AlertCircle,
 } from "lucide-react";
+import { createClient } from "@/lib/supabase";
 
 const planLabels: Record<string, string> = {
   basico: "Básico",
@@ -21,32 +15,48 @@ const planLabels: Record<string, string> = {
 };
 
 export default function RegisterForm({ plan }: { plan?: string }) {
-  const [step, setStep] = useState(1);
+  const [step, setStep]             = useState(1);
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [done, setDone] = useState(false);
+  const [loading, setLoading]       = useState(false);
+  const [done, setDone]             = useState(false);
+  const [error, setError]           = useState("");
 
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    company: "",
-    password: "",
-  });
+  const [form, setForm] = useState({ name: "", email: "", company: "", password: "" });
 
   function update(k: keyof typeof form) {
     return (e: React.ChangeEvent<HTMLInputElement>) =>
       setForm((f) => ({ ...f, [k]: e.target.value }));
   }
 
-  async function handleStep1(e: React.FormEvent) {
+  function handleStep1(e: React.FormEvent) {
     e.preventDefault();
     setStep(2);
   }
 
   async function handleStep2(e: React.FormEvent) {
     e.preventDefault();
+    setError("");
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1500));
+
+    const supabase = createClient();
+    const { error: authError } = await supabase.auth.signUp({
+      email: form.email,
+      password: form.password,
+      options: {
+        data: {
+          name: form.name,
+          company: form.company,
+          plan: plan || "basico",
+        },
+      },
+    });
+
+    if (authError) {
+      setError(authError.message);
+      setLoading(false);
+      return;
+    }
+
     setLoading(false);
     setDone(true);
   }
@@ -67,19 +77,16 @@ export default function RegisterForm({ plan }: { plan?: string }) {
           >
             <CheckCircle size={28} className="text-emerald-400" />
           </motion.div>
-          <h2 className="text-2xl font-black text-white mb-3">
-            ¡Cuenta creada!
-          </h2>
+          <h2 className="text-2xl font-black text-white mb-3">¡Cuenta creada!</h2>
           <p className="text-slate-400 text-sm mb-8 leading-relaxed">
-            Revisa tu correo <strong className="text-white">{form.email}</strong>{" "}
-            para confirmar tu cuenta y comenzar tu período de prueba de 14 días.
+            Revisa tu correo <strong className="text-white">{form.email}</strong> para confirmar tu
+            cuenta y comenzar tu período de prueba de 14 días.
           </p>
           <Link
             href="/login"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-sm transition-all duration-300"
           >
-            Ir al inicio de sesión
-            <ArrowRight size={16} />
+            Ir al inicio de sesión <ArrowRight size={16} />
           </Link>
         </div>
       </motion.div>
@@ -94,19 +101,14 @@ export default function RegisterForm({ plan }: { plan?: string }) {
       className="w-full max-w-md"
     >
       <div className="glass rounded-3xl p-8 md:p-10 border border-white/8 shadow-[0_0_80px_rgba(0,0,0,0.5)]">
-        {/* Header */}
         <div className="mb-8">
           {plan && planLabels[plan] && (
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass-brand text-xs font-semibold text-brand-300 mb-4">
               Plan {planLabels[plan]}
             </div>
           )}
-          <h1 className="text-2xl font-black text-white mb-2">
-            Crear cuenta gratis
-          </h1>
-          <p className="text-slate-400 text-sm">
-            14 días sin tarjeta de crédito. Cancela cuando quieras.
-          </p>
+          <h1 className="text-2xl font-black text-white mb-2">Crear cuenta gratis</h1>
+          <p className="text-slate-400 text-sm">14 días sin tarjeta de crédito. Cancela cuando quieras.</p>
         </div>
 
         {/* Step indicator */}
@@ -114,17 +116,11 @@ export default function RegisterForm({ plan }: { plan?: string }) {
           {[1, 2].map((s) => (
             <div
               key={s}
-              className={`flex items-center gap-2 text-xs font-semibold transition-all duration-300 ${
-                step >= s ? "text-brand-400" : "text-slate-600"
-              }`}
+              className={`flex items-center gap-2 text-xs font-semibold transition-all duration-300 ${step >= s ? "text-brand-400" : "text-slate-600"}`}
             >
               <div
                 className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
-                  step > s
-                    ? "bg-emerald-500 text-white"
-                    : step === s
-                      ? "bg-brand-600 text-white"
-                      : "bg-white/6 text-slate-500"
+                  step > s ? "bg-emerald-500 text-white" : step === s ? "bg-brand-600 text-white" : "bg-white/6 text-slate-500"
                 }`}
               >
                 {step > s ? "✓" : s}
@@ -132,10 +128,19 @@ export default function RegisterForm({ plan }: { plan?: string }) {
               {s === 1 ? "Tus datos" : "Contraseña"}
             </div>
           ))}
-          <div
-            className={`flex-1 h-px transition-all duration-500 ${step >= 2 ? "bg-brand-500/40" : "bg-white/6"}`}
-          />
+          <div className={`flex-1 h-px transition-all duration-500 ${step >= 2 ? "bg-brand-500/40" : "bg-white/6"}`} />
         </div>
+
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-start gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm mb-5"
+          >
+            <AlertCircle size={16} className="shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </motion.div>
+        )}
 
         {/* Step 1 */}
         {step === 1 && (
@@ -152,15 +157,9 @@ export default function RegisterForm({ plan }: { plan?: string }) {
                 Nombre completo
               </label>
               <div className="relative">
-                <User
-                  size={16}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
-                />
+                <User size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
                 <input
-                  type="text"
-                  required
-                  value={form.name}
-                  onChange={update("name")}
+                  type="text" required value={form.name} onChange={update("name")}
                   placeholder="Juan Pérez"
                   className="w-full bg-white/4 border border-white/8 hover:border-white/14 focus:border-brand-500/60 text-white placeholder:text-slate-600 text-sm rounded-xl pl-11 pr-4 py-3.5 outline-none transition-all duration-200 focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)]"
                 />
@@ -172,15 +171,9 @@ export default function RegisterForm({ plan }: { plan?: string }) {
                 Empresa
               </label>
               <div className="relative">
-                <Building2
-                  size={16}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
-                />
+                <Building2 size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
                 <input
-                  type="text"
-                  required
-                  value={form.company}
-                  onChange={update("company")}
+                  type="text" required value={form.company} onChange={update("company")}
                   placeholder="Mi Empresa SRL"
                   className="w-full bg-white/4 border border-white/8 hover:border-white/14 focus:border-brand-500/60 text-white placeholder:text-slate-600 text-sm rounded-xl pl-11 pr-4 py-3.5 outline-none transition-all duration-200 focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)]"
                 />
@@ -192,15 +185,9 @@ export default function RegisterForm({ plan }: { plan?: string }) {
                 Correo electrónico
               </label>
               <div className="relative">
-                <Mail
-                  size={16}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
-                />
+                <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
                 <input
-                  type="email"
-                  required
-                  value={form.email}
-                  onChange={update("email")}
+                  type="email" required value={form.email} onChange={update("email")}
                   placeholder="tu@empresa.com"
                   className="w-full bg-white/4 border border-white/8 hover:border-white/14 focus:border-brand-500/60 text-white placeholder:text-slate-600 text-sm rounded-xl pl-11 pr-4 py-3.5 outline-none transition-all duration-200 focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)]"
                 />
@@ -212,10 +199,7 @@ export default function RegisterForm({ plan }: { plan?: string }) {
               className="group w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-sm transition-all duration-300 shadow-[0_0_20px_rgba(99,102,241,0.3)] hover:shadow-[0_0_30px_rgba(99,102,241,0.5)] mt-2"
             >
               Continuar
-              <ArrowRight
-                size={16}
-                className="group-hover:translate-x-1 transition-transform"
-              />
+              <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
             </button>
           </motion.form>
         )}
@@ -235,16 +219,10 @@ export default function RegisterForm({ plan }: { plan?: string }) {
                 Crear contraseña
               </label>
               <div className="relative">
-                <Lock
-                  size={16}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
-                />
+                <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
                 <input
-                  type={showPassword ? "text" : "password"}
-                  required
-                  minLength={8}
-                  value={form.password}
-                  onChange={update("password")}
+                  type={showPassword ? "text" : "password"} required minLength={8}
+                  value={form.password} onChange={update("password")}
                   placeholder="Mínimo 8 caracteres"
                   className="w-full bg-white/4 border border-white/8 hover:border-white/14 focus:border-brand-500/60 text-white placeholder:text-slate-600 text-sm rounded-xl pl-11 pr-12 py-3.5 outline-none transition-all duration-200 focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)]"
                 />
@@ -256,18 +234,13 @@ export default function RegisterForm({ plan }: { plan?: string }) {
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
-              {/* Password strength */}
               {form.password && (
                 <div className="flex gap-1 mt-2">
                   {[1, 2, 3, 4].map((i) => (
                     <div
                       key={i}
                       className={`h-1 flex-1 rounded-full transition-all duration-300 ${
-                        form.password.length >= i * 2
-                          ? i <= 2
-                            ? "bg-amber-500"
-                            : "bg-emerald-500"
-                          : "bg-white/8"
+                        form.password.length >= i * 2 ? (i <= 2 ? "bg-amber-500" : "bg-emerald-500") : "bg-white/8"
                       }`}
                     />
                   ))}
@@ -275,30 +248,23 @@ export default function RegisterForm({ plan }: { plan?: string }) {
               )}
             </div>
 
-            {/* Terms */}
             <p className="text-xs text-slate-500 leading-relaxed">
               Al crear tu cuenta aceptas nuestros{" "}
-              <Link href="#" className="text-brand-400 hover:text-brand-300">
-                Términos de uso
-              </Link>{" "}
+              <Link href="#" className="text-brand-400 hover:text-brand-300">Términos de uso</Link>{" "}
               y{" "}
-              <Link href="#" className="text-brand-400 hover:text-brand-300">
-                Política de privacidad
-              </Link>
-              . Tus datos están protegidos bajo la Ley 172-13.
+              <Link href="#" className="text-brand-400 hover:text-brand-300">Política de privacidad</Link>.
+              Tus datos están protegidos bajo la Ley 172-13.
             </p>
 
             <div className="flex gap-3">
               <button
-                type="button"
-                onClick={() => setStep(1)}
+                type="button" onClick={() => { setStep(1); setError(""); }}
                 className="px-4 py-3.5 rounded-xl glass hover:bg-white/5 text-slate-300 font-semibold text-sm transition-all border border-white/8"
               >
                 Atrás
               </button>
               <button
-                type="submit"
-                disabled={loading}
+                type="submit" disabled={loading}
                 className="group flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl bg-brand-600 hover:bg-brand-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold text-sm transition-all duration-300 shadow-[0_0_20px_rgba(99,102,241,0.3)]"
               >
                 {loading ? (
@@ -307,28 +273,18 @@ export default function RegisterForm({ plan }: { plan?: string }) {
                     Creando cuenta...
                   </span>
                 ) : (
-                  <>
-                    Crear cuenta
-                    <ArrowRight
-                      size={16}
-                      className="group-hover:translate-x-1 transition-transform"
-                    />
-                  </>
+                  <>Crear cuenta <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" /></>
                 )}
               </button>
             </div>
           </motion.form>
         )}
 
-        {/* Login link */}
         <div className="flex items-center gap-3 mt-6">
           <div className="flex-1 h-px bg-white/6" />
-          <p className="text-xs text-slate-500 text-center">
+          <p className="text-xs text-slate-500">
             ¿Ya tienes cuenta?{" "}
-            <Link
-              href="/login"
-              className="text-brand-400 hover:text-brand-300 font-semibold transition-colors"
-            >
+            <Link href="/login" className="text-brand-400 hover:text-brand-300 font-semibold transition-colors">
               Iniciar sesión
             </Link>
           </p>

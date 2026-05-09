@@ -1,23 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
-  LayoutDashboard,
-  FileSearch,
-  Receipt,
-  Users,
-  FolderOpen,
-  Scale,
-  Lock,
-  Settings,
-  LogOut,
-  Zap,
-  ChevronLeft,
-  Bell,
+  LayoutDashboard, FileSearch, Receipt, Users, FolderOpen, Scale, Lock,
+  Settings, LogOut, Zap, ChevronLeft, Bell,
 } from "lucide-react";
 import { useState } from "react";
+import { useUser } from "@/context/UserContext";
 
 type NavItem = {
   icon: React.ComponentType<{ size?: number; className?: string }>;
@@ -38,56 +29,42 @@ const nav: { group: string; items: NavItem[] }[] = [
   {
     group: "Módulos",
     items: [
-      {
-        icon: FileSearch,
-        label: "FiscalGuard",
-        href: "/dashboard/fiscal",
-        badge: 18,
-        badgeColor: "bg-red-500",
-      },
-      {
-        icon: Receipt,
-        label: "Retenciones",
-        href: "/dashboard/retenciones",
-        badge: 4,
-        badgeColor: "bg-amber-500",
-      },
-      {
-        icon: Users,
-        label: "Nómina",
-        href: "/dashboard/nomina",
-      },
-      {
-        icon: FolderOpen,
-        label: "DocVault",
-        href: "/dashboard/documentos",
-      },
-      {
-        icon: Scale,
-        label: "LexGuard",
-        href: "/dashboard/legal",
-      },
-      {
-        icon: Lock,
-        label: "DataShield",
-        href: "/dashboard/privacidad",
-      },
+      { icon: FileSearch, label: "FiscalGuard",  href: "/dashboard/fiscal",      badge: 18, badgeColor: "bg-red-500" },
+      { icon: Receipt,    label: "Retenciones",  href: "/dashboard/retenciones", badge: 4,  badgeColor: "bg-amber-500" },
+      { icon: Users,      label: "Nómina",       href: "/dashboard/nomina" },
+      { icon: FolderOpen, label: "DocVault",     href: "/dashboard/documentos" },
+      { icon: Scale,      label: "LexGuard",     href: "/dashboard/legal" },
+      { icon: Lock,       label: "DataShield",   href: "/dashboard/privacidad" },
     ],
   },
 ];
 
 export default function Sidebar() {
-  const pathname = usePathname();
+  const pathname  = usePathname();
+  const router    = useRouter();
+  const { user, perfil, signOut } = useUser();
   const [collapsed, setCollapsed] = useState(false);
+
+  const initials = perfil?.nombre
+    ? perfil.nombre.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
+    : user?.email?.slice(0, 2).toUpperCase() ?? "?";
+
+  const displayName = perfil?.nombre || user?.email?.split("@")[0] || "Usuario";
+  const displayRole = perfil?.rol
+    ? perfil.rol.charAt(0).toUpperCase() + perfil.rol.slice(1)
+    : "—";
+
+  async function handleLogout() {
+    await signOut();
+    router.push("/login");
+  }
 
   return (
     <motion.aside
       initial={{ x: -20, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={{ duration: 0.4 }}
-      className={`relative flex flex-col glass border-r border-white/6 transition-all duration-300 ${
-        collapsed ? "w-16" : "w-60"
-      }`}
+      className={`relative flex flex-col glass border-r border-white/6 transition-all duration-300 ${collapsed ? "w-16" : "w-60"}`}
     >
       {/* Logo */}
       <div className="flex items-center justify-between px-4 py-5 border-b border-white/6">
@@ -114,6 +91,21 @@ export default function Sidebar() {
         </button>
       </div>
 
+      {/* User mini-profile */}
+      {!collapsed && (
+        <div className="px-4 py-3 border-b border-white/6">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center text-xs font-bold text-white shrink-0">
+              {initials}
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-semibold text-white truncate">{displayName}</div>
+              <div className="text-[10px] text-slate-500">{displayRole}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-6">
         {nav.map((group) => (
@@ -125,14 +117,14 @@ export default function Sidebar() {
             )}
             <ul className="space-y-0.5">
               {group.items.map((item) => {
-                const Icon = item.icon;
+                const Icon   = item.icon;
                 const active = pathname === item.href;
                 return (
                   <li key={item.href}>
                     <Link
                       href={item.href}
                       title={collapsed ? item.label : undefined}
-                      className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${
+                      className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                         active
                           ? "bg-brand-600/20 text-brand-300 border border-brand-500/25"
                           : "text-slate-400 hover:text-white hover:bg-white/5"
@@ -143,20 +135,14 @@ export default function Sidebar() {
                         <>
                           <span className="flex-1">{item.label}</span>
                           {item.badge != null && (
-                            <span
-                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                                item.badgeColor || "bg-brand-600"
-                              } text-white`}
-                            >
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${item.badgeColor || "bg-brand-600"} text-white`}>
                               {item.badge}
                             </span>
                           )}
                         </>
                       )}
                       {collapsed && item.badge != null && (
-                        <span
-                          className={`absolute top-1 right-1 w-2 h-2 rounded-full ${item.badgeColor || "bg-brand-500"}`}
-                        />
+                        <span className={`absolute top-1 right-1 w-2 h-2 rounded-full ${item.badgeColor || "bg-brand-500"}`} />
                       )}
                     </Link>
                   </li>
@@ -176,7 +162,10 @@ export default function Sidebar() {
           <Settings size={17} />
           {!collapsed && <span>Configuración</span>}
         </Link>
-        <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-400 hover:text-red-400 hover:bg-red-500/5 transition-all">
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-400 hover:text-red-400 hover:bg-red-500/5 transition-all"
+        >
           <LogOut size={17} />
           {!collapsed && <span>Cerrar sesión</span>}
         </button>

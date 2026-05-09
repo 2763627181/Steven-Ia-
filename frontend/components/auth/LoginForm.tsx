@@ -2,24 +2,39 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Mail, Lock, ArrowRight, AlertCircle } from "lucide-react";
+import { createClient } from "@/lib/supabase";
 
 export default function LoginForm() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const router = useRouter();
+  const [email, setEmail]           = useState("");
+  const [password, setPassword]     = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [loading, setLoading]       = useState(false);
+  const [error, setError]           = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
-    // Auth will be wired to Supabase once env vars are set
-    await new Promise((r) => setTimeout(r, 1200));
-    setError("Credenciales incorrectas. Por favor verifica tu correo y contraseña.");
-    setLoading(false);
+
+    const supabase = createClient();
+    const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (authError) {
+      setError(
+        authError.message === "Invalid login credentials"
+          ? "Credenciales incorrectas. Verifica tu correo y contraseña."
+          : authError.message
+      );
+      setLoading(false);
+      return;
+    }
+
+    router.push("/dashboard");
+    router.refresh();
   }
 
   return (
@@ -29,19 +44,12 @@ export default function LoginForm() {
       transition={{ duration: 0.5 }}
       className="w-full max-w-md"
     >
-      {/* Card */}
       <div className="glass rounded-3xl p-8 md:p-10 border border-white/8 shadow-[0_0_80px_rgba(0,0,0,0.5)]">
-        {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-black text-white mb-2">
-            Bienvenido de vuelta
-          </h1>
-          <p className="text-slate-400 text-sm">
-            Accede a tu plataforma de cumplimiento empresarial.
-          </p>
+          <h1 className="text-2xl font-black text-white mb-2">Bienvenido de vuelta</h1>
+          <p className="text-slate-400 text-sm">Accede a tu plataforma de cumplimiento empresarial.</p>
         </div>
 
-        {/* Error */}
         {error && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -54,16 +62,12 @@ export default function LoginForm() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Email */}
           <div>
             <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
               Correo electrónico
             </label>
             <div className="relative">
-              <Mail
-                size={16}
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
-              />
+              <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
                 type="email"
                 required
@@ -75,24 +79,17 @@ export default function LoginForm() {
             </div>
           </div>
 
-          {/* Password */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                 Contraseña
               </label>
-              <Link
-                href="/forgot-password"
-                className="text-xs text-brand-400 hover:text-brand-300 transition-colors"
-              >
+              <Link href="/forgot-password" className="text-xs text-brand-400 hover:text-brand-300 transition-colors">
                 ¿Olvidaste tu contraseña?
               </Link>
             </div>
             <div className="relative">
-              <Lock
-                size={16}
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
-              />
+              <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
                 type={showPassword ? "text" : "password"}
                 required
@@ -111,7 +108,6 @@ export default function LoginForm() {
             </div>
           </div>
 
-          {/* Submit */}
           <button
             type="submit"
             disabled={loading}
@@ -125,35 +121,26 @@ export default function LoginForm() {
             ) : (
               <>
                 Iniciar sesión
-                <ArrowRight
-                  size={16}
-                  className="group-hover:translate-x-1 transition-transform"
-                />
+                <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </>
             )}
           </button>
         </form>
 
-        {/* Divider */}
         <div className="flex items-center gap-3 my-6">
           <div className="flex-1 h-px bg-white/6" />
           <span className="text-xs text-slate-600">o</span>
           <div className="flex-1 h-px bg-white/6" />
         </div>
 
-        {/* Register link */}
         <p className="text-center text-sm text-slate-500">
           ¿No tienes cuenta?{" "}
-          <Link
-            href="/register"
-            className="text-brand-400 hover:text-brand-300 font-semibold transition-colors"
-          >
+          <Link href="/register" className="text-brand-400 hover:text-brand-300 font-semibold transition-colors">
             Crear cuenta gratis
           </Link>
         </p>
       </div>
 
-      {/* Trust note */}
       <p className="text-center text-xs text-slate-600 mt-6">
         Datos protegidos bajo Ley 172-13 de Protección de Datos Personales de RD.
       </p>
